@@ -122,15 +122,15 @@ pub fn max_flow<'graph_ref, G, C>(
     network: &'graph_ref G,
     source: G::NodeId,
     destination: G::NodeId,
-) -> impl MaxFlowReturn<G, C> + use<G, C>
+    capacities: impl Fn(G::EdgeId) -> C,
+) -> impl MaxFlowReturn<G, C>
 where
     G: DirectedGraph + StorableGraph,
     G::NodeId: IndexId,
     G::EdgeId: IndexId,
-    G::EdgeDataRef<'graph_ref>: Borrow<C>,
     C: Sub<Output = C> + Measure + Zero + Bounded + Ord,
 {
-    dinics(network, source, destination)
+    dinics(network, source, destination, capacities)
 }
 
 /// Returns the residual capacity of given edge.

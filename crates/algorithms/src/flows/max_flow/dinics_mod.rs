@@ -1,5 +1,5 @@
 // TODO: Get rid of alloc here (replace level_edges somehow)
-use alloc::{collections::VecDeque, vec, vec::Vec};
+use alloc::{collections::VecDeque, vec::Vec};
 use core::{borrow::Borrow, error::Error, ops::Sub};
 
 use petgraph_core::{
@@ -8,7 +8,6 @@ use petgraph_core::{
         DirectedGraph, Graph,
         storable::{DataContainer, StackContainer, StorableGraph, VisitContainer},
     },
-    id::IndexId,
 };
 
 use super::{other_endpoint, residual_capacity};
@@ -42,23 +41,52 @@ type FlowEdge<G, C> = Edge<<G as Graph>::EdgeId, C, <G as Graph>::NodeId>;
 ///
 /// Offers more configuration options than [`dinics`]. For an explanation of the algorithm, see the
 /// documentation of [`dinics`].
-pub struct Dinics<'graph_ref, G: Graph> {
+pub struct Dinics<'graph_ref, G: Graph, CapFn: Fn(G::EdgeId) -> C, C> {
     network: &'graph_ref G,
     source: Option<G::NodeId>,
     destination: Option<G::NodeId>,
+    capacities: CapFn,
 }
 
-impl<'graph_ref, G: Graph> Dinics<'graph_ref, G> {
+impl<'graph_ref, G: Graph, CapFn: Fn(G::EdgeId) -> C, C> Dinics<'graph_ref, G, CapFn, C> {
     /// Creates a new instance of Dinic's algorithm with the provided graph.
     ///
-    /// The source and destination nodes can be set using a builder pattern with the `with_source`
-    /// and `with_destination` methods.
+    /// Data of the graph's edges is interpreted as capacities of edges.
+    /// The source and destination nodes can be set using a builder pattern with the
+    /// [`with_source`][Self::with_source] and [`with_destination`][Self::with_destination] methods.
+    ///
+    /// To run the algorithm, call the [`run`][Self::run] method on the returned struct.
     #[must_use]
-    pub const fn new(network: &'graph_ref G) -> Self {
+    pub const fn new(
+        network: &'graph_ref G,
+    ) -> Dinics<'graph_ref, G, impl Fn(G::EdgeId) -> G::EdgeData<'graph_ref>, G::EdgeData<'graph_ref>>
+    where
+        G: DirectedGraph,
+        G::EdgeData<'graph_ref>: Clone,
+    {
+        Dinics::new_with_capacities(network, |e| network.edge(e).unwrap().data.borrow().clone())
+    }
+
+    /// Creates a new instance of Dinic's algorithm with the provided graph and capacity function.
+    ///
+    /// The source and destination nodes can be set using a builder pattern with the
+    /// [`with_source`][Self::with_source] and [`with_destination`][Self::with_destination] methods.
+    ///
+    /// To run the algorithm, call the [`run`][Self::run] method on the returned struct.
+    #[must_use]
+    pub const fn new_with_capacities(
+        network: &'graph_ref G,
+        capacities: CapFn,
+    ) -> Dinics<'graph_ref, G, CapFn, C>
+    where
+        G: DirectedGraph,
+        CapFn: Fn(G::EdgeId) -> C,
+    {
         Self {
             network,
             source: None,
             destination: None,
+            capacities,
         }
     }
 
@@ -77,7 +105,7 @@ impl<'graph_ref, G: Graph> Dinics<'graph_ref, G> {
     }
 }
 
-impl<'graph_ref, G> Dinics<'graph_ref, G>
+impl<'graph_ref, G, CapFn: Fn(G::EdgeId) -> C, C> Dinics<'graph_ref, G, CapFn, C>
 where
     G: DirectedGraph + StorableGraph,
 {
@@ -88,16 +116,20 @@ where
     ///
     /// # Errors
     /// Returns an error if the source or destination node is not set.
-    pub fn run<C>(&self) -> Result<DinicsOutput<G, C>, DinicsConfigError>
+    pub fn run(&self) -> Result<DinicsOutput<G, C>, DinicsConfigError>
     where
-        G::EdgeDataRef<'graph_ref>: Borrow<C>,
         C: Sub<Output = C> + Measure + Zero + Bounded + Ord,
     {
         let source = self.source.ok_or(DinicsConfigError::SourceNodeNotSet)?;
         let destination = self
             .destination
             .ok_or(DinicsConfigError::DestinationNodeNotSet)?;
-        Ok(dinics_inner(self.network, source, destination))
+        Ok(dinics_inner(
+            self.network,
+            source,
+            destination,
+            &self.capacities,
+        ))
     }
 }
 
@@ -160,23 +192,23 @@ pub fn dinics<'graph_ref, G, C>(
     network: &'graph_ref G,
     source: G::NodeId,
     destination: G::NodeId,
+    capacities: impl Fn(G::EdgeId) -> C,
 ) -> DinicsOutput<G, C>
 where
     G: DirectedGraph + StorableGraph,
-    G::EdgeDataRef<'graph_ref>: Borrow<C>,
     C: Sub<Output = C> + Measure + Zero + Bounded + Ord,
 {
-    dinics_inner(network, source, destination)
+    dinics_inner(network, source, destination, capacities)
 }
 
 fn dinics_inner<'graph_ref, G, C>(
     network: &'graph_ref G,
     source: G::NodeId,
     destination: G::NodeId,
+    capacities: impl Fn(G::EdgeId) -> C,
 ) -> DinicsOutput<G, C>
 where
     G: DirectedGraph + StorableGraph,
-    G::EdgeDataRef<'graph_ref>: Borrow<C>,
     C: Sub<Output = C> + Measure + Zero + Bounded + Ord,
 {
     let mut max_flow = C::zero();
@@ -184,8 +216,15 @@ where
     let mut visited = G::node_visit_container(network);
     let mut level_edges = G::node_data_container::<Vec<FlowEdge<G, C>>>(network);
 
-    while *build_level_graph(network, source, destination, &flows, &mut level_edges)
-        .get(destination)
+    while *build_level_graph(
+        network,
+        source,
+        destination,
+        &capacities,
+        &flows,
+        &mut level_edges,
+    )
+    .get(destination)
         > 0
     {
         let flow_increase = find_blocking_flow(
@@ -216,12 +255,12 @@ fn build_level_graph<'graph_ref, G, C>(
     network: &'graph_ref G,
     source: G::NodeId,
     destination: G::NodeId,
+    capacities: impl Fn(G::EdgeId) -> C,
     flows: &impl DataContainer<G::EdgeId, C>,
     level_edges: &mut impl DataContainer<G::NodeId, Vec<FlowEdge<G, C>>>,
 ) -> impl DataContainer<G::NodeId, usize>
 where
     G: DirectedGraph + StorableGraph,
-    G::EdgeDataRef<'graph_ref>: Borrow<C>,
     C: Sub<Output = C> + Measure + Zero,
 {
     let mut level_graph = G::node_data_container::<usize>(network);
@@ -233,7 +272,13 @@ where
         let incident_edges = network.incident_edges(vertex);
         level_edges.get_mut(vertex).clear();
         for edge in incident_edges {
-            let edge: FlowEdge<G, C> = edge.to_owned_edge();
+            let capacity = (capacities)(edge.id);
+            let edge = Edge {
+                id: edge.id,
+                source: edge.source,
+                target: edge.target,
+                data: capacity,
+            };
             let next_vertex = other_endpoint::<G, _>(&edge, vertex);
             let residual_cap = residual_capacity::<G, C>(edge, next_vertex, *flows.get(edge.id));
             if residual_cap == C::zero() {

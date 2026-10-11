@@ -21,8 +21,12 @@ macro_rules! test_max_flow_on_graph {
             $graph_add_edge,
             $graph_remove_node,
             $graph_remove_edge,
-            |graph, source, destination| edmonds_karp(graph, source, destination)
-                .into_max_flow_and_flow_data(),
+            |graph, source, destination| edmonds_karp(graph, source, destination, |e| graph
+                .edge(e)
+                .unwrap()
+                .data
+                .clone())
+            .into_max_flow_and_flow_data(),
             edmonds_karp
         );
 
@@ -32,8 +36,12 @@ macro_rules! test_max_flow_on_graph {
             $graph_add_edge,
             $graph_remove_node,
             $graph_remove_edge,
-            |graph, source, destination| dinics(graph, source, destination)
-                .into_max_flow_and_flow_data(),
+            |graph, source, destination| dinics(graph, source, destination, |e| graph
+                .edge(e)
+                .unwrap()
+                .data
+                .clone())
+            .into_max_flow_and_flow_data(),
             dinics
         );
     };

@@ -44,23 +44,60 @@ impl Error for EdmondsKarpConfigError {}
 ///
 /// Offers more configuration options than [`edmonds_karp`]. For an explanation of the algorithm,
 /// see the documentation of [`edmonds_karp`].
-pub struct EdmondsKarp<'graph_ref, G: Graph> {
+pub struct EdmondsKarp<'graph_ref, G: Graph, CapFn: Fn(G::EdgeId) -> C, C> {
     network: &'graph_ref G,
     source: Option<G::NodeId>,
     destination: Option<G::NodeId>,
+    capacities: CapFn,
 }
 
-impl<'graph_ref, G: Graph> EdmondsKarp<'graph_ref, G> {
+impl<'graph_ref, G: Graph, CapFn: Fn(G::EdgeId) -> C, C> EdmondsKarp<'graph_ref, G, CapFn, C> {
     /// Creates a new instance of the Edmonds-Karp algorithm with the provided graph.
     ///
-    /// The source and destination nodes can be set using a builder pattern with the `with_source`
-    /// and `with_destination` methods.
+    /// Data of the graph's edges is interpreted as capacities of edges.
+    /// The source and destination nodes can be set using a builder pattern with the
+    /// [`with_source`][Self::with_source] and [`with_destination`][Self::with_destination] methods.
+    ///
+    /// To run the algorithm, call the [`run`][Self::run] method on the returned struct.
     #[must_use]
-    pub const fn new(network: &'graph_ref G) -> Self {
+    pub const fn new(
+        network: &'graph_ref G,
+    ) -> EdmondsKarp<
+        'graph_ref,
+        G,
+        impl Fn(G::EdgeId) -> G::EdgeData<'graph_ref>,
+        G::EdgeData<'graph_ref>,
+    >
+    where
+        G: DirectedGraph,
+        G::EdgeData<'graph_ref>: Clone,
+    {
+        EdmondsKarp::new_with_capacities(network, |e| {
+            network.edge(e).unwrap().data.borrow().clone()
+        })
+    }
+
+    /// Creates a new instance of the Edmonds-Karp algorithm with the provided graph and capacity
+    /// function.
+    ///
+    /// The source and destination nodes can be set using a builder pattern with the
+    /// [`with_source`][Self::with_source] and [`with_destination`][Self::with_destination] methods.
+    ///
+    /// To run the algorithm, call the [`run`][Self::run] method on the returned struct.
+    #[must_use]
+    pub const fn new_with_capacities(
+        network: &'graph_ref G,
+        capacities: CapFn,
+    ) -> EdmondsKarp<'graph_ref, G, CapFn, C>
+    where
+        G: DirectedGraph,
+        CapFn: Fn(G::EdgeId) -> C,
+    {
         Self {
             network,
             source: None,
             destination: None,
+            capacities,
         }
     }
 
@@ -79,7 +116,7 @@ impl<'graph_ref, G: Graph> EdmondsKarp<'graph_ref, G> {
     }
 }
 
-impl<'graph_ref, G> EdmondsKarp<'graph_ref, G>
+impl<'graph_ref, G, CapFn: Fn(G::EdgeId) -> C, C> EdmondsKarp<'graph_ref, G, CapFn, C>
 where
     G: DirectedGraph + StorableGraph,
     G::NodeId: IndexId,
@@ -92,7 +129,7 @@ where
     ///
     /// # Errors
     /// Returns an error if the source or destination node is not set.
-    pub fn run<C>(&self) -> Result<EdmondsKarpOutput<G, C>, EdmondsKarpConfigError>
+    pub fn run(&self) -> Result<EdmondsKarpOutput<G, C>, EdmondsKarpConfigError>
     where
         G::EdgeDataRef<'graph_ref>: Borrow<C> + Copy,
         C: Sub<Output = C> + Zero + Measure + Bounded,
@@ -103,7 +140,12 @@ where
         let destination = self
             .destination
             .ok_or(EdmondsKarpConfigError::DestinationNodeNotSet)?;
-        Ok(edmonds_karp_inner(self.network, source, destination))
+        Ok(edmonds_karp_inner(
+            self.network,
+            source,
+            destination,
+            &self.capacities,
+        ))
     }
 }
 
@@ -162,29 +204,36 @@ pub fn edmonds_karp<'graph_ref, G, C>(
     network: &'graph_ref G,
     source: G::NodeId,
     destination: G::NodeId,
+    capacities: impl Fn(G::EdgeId) -> C,
 ) -> EdmondsKarpOutput<G, C>
 where
     G: DirectedGraph + StorableGraph,
-    G::EdgeDataRef<'graph_ref>: Borrow<C> + Copy,
     C: Sub<Output = C> + Add<Output = C> + Zero + Measure + Bounded,
 {
-    edmonds_karp_inner(network, source, destination)
+    edmonds_karp_inner(network, source, destination, &capacities)
 }
 
 fn edmonds_karp_inner<'graph_ref, G, C>(
     network: &'graph_ref G,
     source: G::NodeId,
     destination: G::NodeId,
+    capacities: impl Fn(G::EdgeId) -> C,
 ) -> EdmondsKarpOutput<G, C>
 where
     G: DirectedGraph + StorableGraph,
-    G::EdgeDataRef<'graph_ref>: Borrow<C> + Copy,
     C: Sub<Output = C> + Zero + Measure + Bounded,
 {
     let mut edge_to = G::node_data_container::<Option<Edge<G::EdgeId, C, G::NodeId>>>(network);
     let mut flows = G::edge_data_container::<C>(network);
     let mut max_flow = C::zero();
-    while has_augmented_path(network, source, destination, &mut edge_to, &flows) {
+    while has_augmented_path(
+        network,
+        source,
+        destination,
+        &capacities,
+        &mut edge_to,
+        &flows,
+    ) {
         let mut path_flow = <C as Bounded>::max();
 
         // Find the bottleneck capacity of the path
@@ -219,12 +268,12 @@ fn has_augmented_path<'graph_ref, G, C>(
     network: &'graph_ref G,
     source: G::NodeId,
     destination: G::NodeId,
+    capacities: impl Fn(G::EdgeId) -> C,
     edge_to: &mut G::NodeDataContainer<Option<Edge<G::EdgeId, C, G::NodeId>>>,
     flows: &G::EdgeDataContainer<C>,
 ) -> bool
 where
     G: DirectedGraph + StorableGraph,
-    G::EdgeDataRef<'graph_ref>: Borrow<C> + Copy,
     C: Sub<Output = C> + Zero + Measure,
 {
     let mut visited = G::node_visit_container(network);
@@ -236,11 +285,17 @@ where
         for edge in network.incident_edges(vertex) {
             let next = other_endpoint::<G, _>(&edge, vertex);
             let edge_index = edge.id;
-            let residual_cap =
-                residual_capacity::<G, C>(edge.to_owned_edge(), next, *flows.get(edge_index));
+            let capacity = capacities(edge_index);
+            let edge = Edge {
+                id: edge_index,
+                source: edge.source,
+                target: edge.target,
+                data: capacity,
+            };
+            let residual_cap = residual_capacity::<G, C>(edge, next, *flows.get(edge_index));
             if !visited.is_visited(next) && (residual_cap > C::zero()) {
                 visited.mark_visited(next);
-                *edge_to.get_mut(next) = Some(edge.to_owned_edge());
+                edge_to.get_mut(next).replace(edge);
                 if destination == next {
                     return true;
                 }

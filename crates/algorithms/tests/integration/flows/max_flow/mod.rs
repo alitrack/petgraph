@@ -36,58 +36,37 @@ macro_rules! test_max_flow_all_examples {
     ($graph_constructor:expr, $max_flow_algorithm:expr) => {
         #[test]
         fn test_one() {
-            crate::flows::max_flow::test_max_flow_one_call_me(
-                $graph_constructor,
-                $max_flow_algorithm,
-            );
+            crate::flows::max_flow::test_max_flow_one($graph_constructor, $max_flow_algorithm);
         }
 
         #[test]
         fn test_two() {
-            crate::flows::max_flow::test_max_flow_two_call_me(
-                $graph_constructor,
-                $max_flow_algorithm,
-            );
+            crate::flows::max_flow::test_max_flow_two($graph_constructor, $max_flow_algorithm);
         }
 
         #[test]
         fn test_three() {
-            crate::flows::max_flow::test_max_flow_three_call_me(
-                $graph_constructor,
-                $max_flow_algorithm,
-            );
+            crate::flows::max_flow::test_max_flow_three($graph_constructor, $max_flow_algorithm);
         }
 
         #[test]
         fn test_four() {
-            crate::flows::max_flow::test_max_flow_four_call_me(
-                $graph_constructor,
-                $max_flow_algorithm,
-            );
+            crate::flows::max_flow::test_max_flow_four($graph_constructor, $max_flow_algorithm);
         }
 
         #[test]
         fn test_five() {
-            crate::flows::max_flow::test_max_flow_five_call_me(
-                $graph_constructor,
-                $max_flow_algorithm,
-            );
+            crate::flows::max_flow::test_max_flow_five($graph_constructor, $max_flow_algorithm);
         }
 
         #[test]
         fn test_six() {
-            crate::flows::max_flow::test_max_flow_six_call_me(
-                $graph_constructor,
-                $max_flow_algorithm,
-            );
+            crate::flows::max_flow::test_max_flow_six($graph_constructor, $max_flow_algorithm);
         }
 
         #[test]
         fn test_seven() {
-            crate::flows::max_flow::test_max_flow_seven_call_me(
-                $graph_constructor,
-                $max_flow_algorithm,
-            );
+            crate::flows::max_flow::test_max_flow_seven($graph_constructor, $max_flow_algorithm);
         }
 
         // TODO Add missing test functions once proper IndexId etc handling in Algorithms is done.
@@ -96,7 +75,7 @@ macro_rules! test_max_flow_all_examples {
 
 run_macro_for_all_dir_graphs!(test_max_flow_on_graph);
 
-fn test_max_flow_one_call_me<
+fn test_max_flow_one<
     G: DirectedGraph + StorableGraph + EditableGraph<OwnedNodeData = (), OwnedEdgeData = u32>,
 >(
     graph_constructor: impl Fn() -> G,
@@ -117,7 +96,7 @@ fn test_max_flow_one_call_me<
     assert_eq!(5, max_flow);
 }
 
-fn test_max_flow_two_call_me<
+fn test_max_flow_two<
     G: DirectedGraph + StorableGraph + EditableGraph<OwnedNodeData = (), OwnedEdgeData = u32>,
 >(
     graph_constructor: impl Fn() -> G,
@@ -144,7 +123,7 @@ fn test_max_flow_two_call_me<
     assert_eq!(7, max_flow);
 }
 
-fn test_max_flow_three_call_me<
+fn test_max_flow_three<
     G: DirectedGraph + StorableGraph + EditableGraph<OwnedNodeData = (), OwnedEdgeData = u32>,
 >(
     graph_constructor: impl Fn() -> G,
@@ -173,7 +152,7 @@ fn test_max_flow_three_call_me<
     assert_eq!(10, max_flow);
 }
 
-fn test_max_flow_four_call_me<
+fn test_max_flow_four<
     G: DirectedGraph + StorableGraph + EditableGraph<OwnedNodeData = (), OwnedEdgeData = u32>,
 >(
     graph_constructor: impl Fn() -> G,
@@ -200,7 +179,7 @@ fn test_max_flow_four_call_me<
     assert_eq!(5, max_flow);
 }
 
-fn test_max_flow_five_call_me<
+fn test_max_flow_five<
     G: DirectedGraph + StorableGraph + EditableGraph<OwnedNodeData = (), OwnedEdgeData = u32>,
 >(
     graph_constructor: impl Fn() -> G,
@@ -229,7 +208,7 @@ fn test_max_flow_five_call_me<
     assert_eq!(23, max_flow);
 }
 
-fn test_max_flow_six_call_me<
+fn test_max_flow_six<
     G: DirectedGraph + StorableGraph + EditableGraph<OwnedNodeData = (), OwnedEdgeData = u32>,
 >(
     graph_constructor: impl Fn() -> G,
@@ -258,7 +237,7 @@ fn test_max_flow_six_call_me<
     assert_eq!(19, max_flow);
 }
 
-fn test_max_flow_seven_call_me<
+fn test_max_flow_seven<
     G: DirectedGraph + StorableGraph + EditableGraph<OwnedNodeData = (), OwnedEdgeData = u32>,
 >(
     graph_constructor: impl Fn() -> G,

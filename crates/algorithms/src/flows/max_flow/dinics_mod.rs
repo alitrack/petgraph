@@ -327,6 +327,8 @@ where
         visited,
         &mut edge_to,
     ) {
+        // TODO: Check whether using Option<C> here is similarly performant while getting rid of the
+        // Bounded requirement on C
         let mut path_flow = <C as Bounded>::max();
 
         // Find the bottleneck capacity of the path

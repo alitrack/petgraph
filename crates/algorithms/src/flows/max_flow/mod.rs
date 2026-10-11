@@ -136,6 +136,7 @@ pub fn max_flow<G, C>(
 ) -> MaxFlowOutput<G, C>
 where
     G: DirectedGraph + StorableGraph,
+    // TODO: Consider switching to num_traits traits.
     C: Sub<Output = C> + Measure + Zero + Bounded + MinMax + Default,
 {
     MaxFlowOutput(dinics(network, source, destination, capacities))

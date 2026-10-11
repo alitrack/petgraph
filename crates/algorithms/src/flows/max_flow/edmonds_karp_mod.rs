@@ -114,7 +114,7 @@ impl<'graph_ref, G: Graph, CapFn: Fn(G::EdgeId) -> C, C> EdmondsKarp<'graph_ref,
     }
 }
 
-impl<'graph_ref, G, CapFn: Fn(G::EdgeId) -> C, C> EdmondsKarp<'graph_ref, G, CapFn, C>
+impl<G, CapFn: Fn(G::EdgeId) -> C, C> EdmondsKarp<'_, G, CapFn, C>
 where
     G: DirectedGraph + StorableGraph,
     G::NodeId: IndexId,

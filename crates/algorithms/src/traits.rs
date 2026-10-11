@@ -11,7 +11,7 @@ pub trait Zero {
 }
 
 macro_rules! impl_zero(
-    ( $( $t:ident ),* )=> {
+    ( $( $t:ty ),* )=> {
         $(
             impl Zero for $t {
                 fn zero() -> Self {
@@ -33,15 +33,15 @@ pub trait Bounded {
 }
 
 macro_rules! impl_bounded(
-    ( $( $t:ident ),* )=> {
+    ( $( $t:ty ),* )=> {
         $(
             impl Bounded for $t {
                 fn min() -> Self {
-                    $t::MIN
+                    <$t>::MIN
                 }
 
                 fn max() -> Self {
-                    $t::MAX
+                    <$t>::MAX
                 }
             }
         )*
@@ -58,7 +58,7 @@ pub trait MinMax {
 }
 
 macro_rules! impl_min_max(
-    ( $( $t:ident ),* )=> {
+    ( $( $t:ty ),* )=> {
         $(
             impl MinMax for $t {
                 fn min_cmp(&self, other: &Self) -> Self {

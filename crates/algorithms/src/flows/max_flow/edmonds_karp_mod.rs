@@ -129,7 +129,6 @@ where
     /// Returns an error if the source or destination node is not set.
     pub fn run(&self) -> Result<EdmondsKarpOutput<G, C>, EdmondsKarpConfigError>
     where
-        G::EdgeDataRef<'graph_ref>: Borrow<C> + Copy,
         C: Sub<Output = C> + Zero + Measure + Bounded,
     {
         let source = self

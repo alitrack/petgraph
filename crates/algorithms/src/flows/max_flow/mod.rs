@@ -25,19 +25,12 @@
 //! [edmonds_karp_wikipedia]: https://en.wikipedia.org/wiki/Edmonds%E2%80%93Karp_algorithm
 //! [max_flow_wikipedia]: https://en.wikipedia.org/wiki/Maximum_flow_problem
 
-#[cfg(feature = "alloc")]
 pub mod dinics_mod;
-#[cfg(feature = "alloc")]
 pub mod edmonds_karp_mod;
 
-use core::{
-    ops::{Add, Sub},
-};
+use core::ops::{Add, Sub};
 
-#[cfg(feature = "alloc")]
-pub use dinics_mod::dinics;
-#[cfg(feature = "alloc")]
-pub use edmonds_karp_mod::edmonds_karp;
+use dinics_mod::{DinicsOutput, dinics};
 use petgraph_core::{
     edge::Edge,
     graph::{DirectedGraph, Graph, storable::StorableGraph},
@@ -58,6 +51,24 @@ pub trait MaxFlowReturn<G: Graph + StorableGraph, C: Default> {
     /// Consumes the return value and returns the maximum flow value and the flow of each edge in an
     /// `EdgeDataContainer` corresponding to the respective graph type.
     fn into_max_flow_and_flow_data(self) -> (C, G::EdgeDataContainer<C>);
+}
+
+/// Wrapper struct for the output of the `max_flow` function, which implements the `MaxFlowReturn`
+/// trait.
+pub struct MaxFlowOutput<G: Graph + StorableGraph, C: Default>(DinicsOutput<G, C>);
+
+impl<G: Graph + StorableGraph, C: Default> MaxFlowReturn<G, C> for MaxFlowOutput<G, C> {
+    fn max_flow(&self) -> &C {
+        self.0.max_flow()
+    }
+
+    fn flows(&self) -> &G::EdgeDataContainer<C> {
+        self.0.flows()
+    }
+
+    fn into_max_flow_and_flow_data(self) -> (C, G::EdgeDataContainer<C>) {
+        self.0.into_max_flow_and_flow_data()
+    }
 }
 
 /// Computes a [Max Flow][maximum_flow] from `source` to `destination`.
@@ -122,14 +133,14 @@ pub fn max_flow<G, C>(
     source: G::NodeId,
     destination: G::NodeId,
     capacities: impl Fn(G::EdgeId) -> C,
-) -> impl MaxFlowReturn<G, C>
+) -> MaxFlowOutput<G, C>
 where
     G: DirectedGraph + StorableGraph,
     G::NodeId: IndexId,
     G::EdgeId: IndexId,
     C: Sub<Output = C> + Measure + Zero + Bounded + Ord,
 {
-    dinics(network, source, destination, capacities)
+    MaxFlowOutput(dinics(network, source, destination, capacities))
 }
 
 /// Returns the residual capacity of given edge.

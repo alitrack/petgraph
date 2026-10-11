@@ -64,7 +64,10 @@ impl<'graph_ref, G: Graph, CapFn: Fn(G::EdgeId) -> C, C> Dinics<'graph_ref, G, C
         G: DirectedGraph,
         G::EdgeData<'graph_ref>: Clone,
     {
-        Dinics::new_with_capacities(network, |e| network.edge(e).unwrap().data.borrow().clone())
+        Dinics::new_with_capacities(network, |edge_id| {
+            #[expect(clippy::missing_panics_doc, reason = "infallible")]
+            network.edge(edge_id).unwrap().data.borrow().clone()
+        })
     }
 
     /// Creates a new instance of Dinic's algorithm with the provided graph and capacity function.
@@ -74,10 +77,7 @@ impl<'graph_ref, G: Graph, CapFn: Fn(G::EdgeId) -> C, C> Dinics<'graph_ref, G, C
     ///
     /// To run the algorithm, call the [`run`][Self::run] method on the returned struct.
     #[must_use]
-    pub const fn new_with_capacities(
-        network: &'graph_ref G,
-        capacities: CapFn,
-    ) -> Dinics<'graph_ref, G, CapFn, C>
+    pub const fn new_with_capacities(network: &'graph_ref G, capacities: CapFn) -> Self
     where
         G: DirectedGraph,
         CapFn: Fn(G::EdgeId) -> C,
@@ -105,7 +105,7 @@ impl<'graph_ref, G: Graph, CapFn: Fn(G::EdgeId) -> C, C> Dinics<'graph_ref, G, C
     }
 }
 
-impl<'graph_ref, G, CapFn: Fn(G::EdgeId) -> C, C> Dinics<'graph_ref, G, CapFn, C>
+impl<G, CapFn: Fn(G::EdgeId) -> C, C> Dinics<'_, G, CapFn, C>
 where
     G: DirectedGraph + StorableGraph,
 {
@@ -188,8 +188,8 @@ impl<G: Graph + StorableGraph, C: Default> MaxFlowReturn<G, C> for DinicsOutput<
 ///
 /// # Example
 /// // TODO: Add example
-pub fn dinics<'graph_ref, G, C>(
-    network: &'graph_ref G,
+pub fn dinics<G, C>(
+    network: &G,
     source: G::NodeId,
     destination: G::NodeId,
     capacities: impl Fn(G::EdgeId) -> C,
@@ -201,8 +201,8 @@ where
     dinics_inner(network, source, destination, capacities)
 }
 
-fn dinics_inner<'graph_ref, G, C>(
-    network: &'graph_ref G,
+fn dinics_inner<G, C>(
+    network: &G,
     source: G::NodeId,
     destination: G::NodeId,
     capacities: impl Fn(G::EdgeId) -> C,
@@ -251,8 +251,8 @@ where
 /// vertex to its neighbours in the next level.
 ///
 /// Returns the computed level graph.
-fn build_level_graph<'graph_ref, G, C>(
-    network: &'graph_ref G,
+fn build_level_graph<G, C>(
+    network: &G,
     source: G::NodeId,
     destination: G::NodeId,
     capacities: impl Fn(G::EdgeId) -> C,
@@ -335,15 +335,15 @@ where
             let residual_capacity =
                 residual_capacity::<G, C>(edge.to_owned_edge(), vertex, *flows.get(edge.id));
             path_flow = path_flow.min(residual_capacity);
-            vertex = other_endpoint::<G, _>(&edge, vertex);
+            vertex = other_endpoint::<G, _>(edge, vertex);
         }
 
         // Update the flow of each edge along the discovered path
         let mut vertex = destination;
         while let Some(edge) = edge_to.get(vertex) {
             *flows.get_mut(edge.id) =
-                adjusted_residual_flow::<G, _, C>(&edge, vertex, *flows.get(edge.id), path_flow);
-            vertex = other_endpoint::<G, _>(&edge, vertex);
+                adjusted_residual_flow::<G, _, C>(edge, vertex, *flows.get(edge.id), path_flow);
+            vertex = other_endpoint::<G, _>(edge, vertex);
         }
         flow_increase = flow_increase + path_flow;
     }

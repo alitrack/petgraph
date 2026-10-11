@@ -72,8 +72,9 @@ impl<'graph_ref, G: Graph, CapFn: Fn(G::EdgeId) -> C, C> EdmondsKarp<'graph_ref,
         G: DirectedGraph,
         G::EdgeData<'graph_ref>: Clone,
     {
-        EdmondsKarp::new_with_capacities(network, |e| {
-            network.edge(e).unwrap().data.borrow().clone()
+        EdmondsKarp::new_with_capacities(network, |edge_id| {
+            #[expect(clippy::missing_panics_doc, reason = "infallible")]
+            network.edge(edge_id).unwrap().data.borrow().clone()
         })
     }
 
@@ -85,10 +86,7 @@ impl<'graph_ref, G: Graph, CapFn: Fn(G::EdgeId) -> C, C> EdmondsKarp<'graph_ref,
     ///
     /// To run the algorithm, call the [`run`][Self::run] method on the returned struct.
     #[must_use]
-    pub const fn new_with_capacities(
-        network: &'graph_ref G,
-        capacities: CapFn,
-    ) -> EdmondsKarp<'graph_ref, G, CapFn, C>
+    pub const fn new_with_capacities(network: &'graph_ref G, capacities: CapFn) -> Self
     where
         G: DirectedGraph,
         CapFn: Fn(G::EdgeId) -> C,
@@ -200,8 +198,8 @@ impl<G: Graph + StorableGraph, C: Default> MaxFlowReturn<G, C> for EdmondsKarpOu
 ///
 /// # Example
 /// // TODO
-pub fn edmonds_karp<'graph_ref, G, C>(
-    network: &'graph_ref G,
+pub fn edmonds_karp<G, C>(
+    network: &G,
     source: G::NodeId,
     destination: G::NodeId,
     capacities: impl Fn(G::EdgeId) -> C,
@@ -213,8 +211,8 @@ where
     edmonds_karp_inner(network, source, destination, &capacities)
 }
 
-fn edmonds_karp_inner<'graph_ref, G, C>(
-    network: &'graph_ref G,
+fn edmonds_karp_inner<G, C>(
+    network: &G,
     source: G::NodeId,
     destination: G::NodeId,
     capacities: impl Fn(G::EdgeId) -> C,
@@ -264,8 +262,8 @@ where
 
 /// Returns whether there is an augmenting path in the graph
 #[allow(clippy::type_complexity)]
-fn has_augmented_path<'graph_ref, G, C>(
-    network: &'graph_ref G,
+fn has_augmented_path<G, C>(
+    network: &G,
     source: G::NodeId,
     destination: G::NodeId,
     capacities: impl Fn(G::EdgeId) -> C,

@@ -31,7 +31,6 @@ pub mod dinics_mod;
 pub mod edmonds_karp_mod;
 
 use core::{
-    borrow::Borrow,
     ops::{Add, Sub},
 };
 
@@ -118,8 +117,8 @@ pub trait MaxFlowReturn<G: Graph + StorableGraph, C: Default> {
 /// let result = max_flow::<_, u8>(&graph, source, destination);
 /// assert_eq!(&23, result.max_flow());
 /// ```
-pub fn max_flow<'graph_ref, G, C>(
-    network: &'graph_ref G,
+pub fn max_flow<G, C>(
+    network: &G,
     source: G::NodeId,
     destination: G::NodeId,
     capacities: impl Fn(G::EdgeId) -> C,

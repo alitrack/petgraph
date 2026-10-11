@@ -37,7 +37,7 @@ use petgraph_core::{
     id::IndexId,
 };
 
-use crate::traits::{Bounded, Measure, Zero};
+use crate::traits::{Bounded, Measure, MinMax, Zero};
 
 /// The return trait that is implemented by Max Flow algorithms
 pub trait MaxFlowReturn<G: Graph + StorableGraph, C: Default> {
@@ -136,9 +136,7 @@ pub fn max_flow<G, C>(
 ) -> MaxFlowOutput<G, C>
 where
     G: DirectedGraph + StorableGraph,
-    G::NodeId: IndexId,
-    G::EdgeId: IndexId,
-    C: Sub<Output = C> + Measure + Zero + Bounded + Ord,
+    C: Sub<Output = C> + Measure + Zero + Bounded + MinMax + Default,
 {
     MaxFlowOutput(dinics(network, source, destination, capacities))
 }

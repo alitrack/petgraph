@@ -13,7 +13,7 @@ use petgraph_core::{
 use super::{other_endpoint, residual_capacity};
 use crate::{
     flows::max_flow::{MaxFlowReturn, adjusted_residual_flow},
-    traits::{Bounded, Measure, Zero},
+    traits::{Bounded, Measure, MinMax, Zero},
 };
 
 /// Errors that can occur in the configuration of Dinic's algorithm.
@@ -118,7 +118,7 @@ where
     /// Returns an error if the source or destination node is not set.
     pub fn run(&self) -> Result<DinicsOutput<G, C>, DinicsConfigError>
     where
-        C: Sub<Output = C> + Measure + Zero + Bounded + Ord,
+        C: Sub<Output = C> + Measure + Zero + Bounded + MinMax + Default,
     {
         let source = self.source.ok_or(DinicsConfigError::SourceNodeNotSet)?;
         let destination = self
@@ -196,7 +196,7 @@ pub fn dinics<G, C>(
 ) -> DinicsOutput<G, C>
 where
     G: DirectedGraph + StorableGraph,
-    C: Sub<Output = C> + Measure + Zero + Bounded + Ord,
+    C: Sub<Output = C> + Measure + Zero + Bounded + MinMax + Default,
 {
     dinics_inner(network, source, destination, capacities)
 }
@@ -209,7 +209,7 @@ fn dinics_inner<G, C>(
 ) -> DinicsOutput<G, C>
 where
     G: DirectedGraph + StorableGraph,
-    C: Sub<Output = C> + Measure + Zero + Bounded + Ord,
+    C: Sub<Output = C> + Measure + Zero + Bounded + MinMax + Default,
 {
     let mut max_flow = C::zero();
     let mut flows = G::edge_data_container::<C>(network);
@@ -314,7 +314,7 @@ fn find_blocking_flow<G, C>(
 ) -> C
 where
     G: DirectedGraph + StorableGraph,
-    C: Sub<Output = C> + Measure + Zero + Bounded + Ord,
+    C: Sub<Output = C> + Measure + Zero + Bounded + MinMax + Default,
 {
     let mut flow_increase = C::zero();
     let mut edge_to = G::node_data_container::<Option<FlowEdge<G, C>>>(network);
@@ -334,7 +334,7 @@ where
         while let Some(edge) = edge_to.get(vertex) {
             let residual_capacity =
                 residual_capacity::<G, C>(edge.to_owned_edge(), vertex, *flows.get(edge.id));
-            path_flow = path_flow.min(residual_capacity);
+            path_flow = path_flow.min_cmp(&residual_capacity);
             vertex = other_endpoint::<G, _>(edge, vertex);
         }
 

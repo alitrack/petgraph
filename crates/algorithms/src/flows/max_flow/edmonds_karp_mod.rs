@@ -3,7 +3,7 @@ use core::{
     borrow::Borrow,
     error::Error,
     fmt::{Display, Formatter},
-    ops::{Add, Sub},
+    ops::Sub,
 };
 
 use petgraph_core::{
@@ -129,7 +129,7 @@ where
     /// Returns an error if the source or destination node is not set.
     pub fn run(&self) -> Result<EdmondsKarpOutput<G, C>, EdmondsKarpConfigError>
     where
-        C: Sub<Output = C> + Zero + Measure + Bounded,
+        C: Sub<Output = C> + Zero + Measure + Bounded + Default,
     {
         let source = self
             .source
@@ -205,7 +205,7 @@ pub fn edmonds_karp<G, C>(
 ) -> EdmondsKarpOutput<G, C>
 where
     G: DirectedGraph + StorableGraph,
-    C: Sub<Output = C> + Add<Output = C> + Zero + Measure + Bounded,
+    C: Sub<Output = C> + Measure + Zero + Bounded + Default,
 {
     edmonds_karp_inner(network, source, destination, &capacities)
 }
@@ -218,7 +218,7 @@ fn edmonds_karp_inner<G, C>(
 ) -> EdmondsKarpOutput<G, C>
 where
     G: DirectedGraph + StorableGraph,
-    C: Sub<Output = C> + Zero + Measure + Bounded,
+    C: Sub<Output = C> + Zero + Measure + Bounded + Default,
 {
     let mut edge_to = G::node_data_container::<Option<Edge<G::EdgeId, C, G::NodeId>>>(network);
     let mut flows = G::edge_data_container::<C>(network);
@@ -271,7 +271,7 @@ fn has_augmented_path<G, C>(
 ) -> bool
 where
     G: DirectedGraph + StorableGraph,
-    C: Sub<Output = C> + Zero + Measure,
+    C: Sub<Output = C> + Zero + Measure + Default,
 {
     let mut visited = G::node_visit_container(network);
     let mut queue = VecDeque::new();

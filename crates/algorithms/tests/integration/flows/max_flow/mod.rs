@@ -1,5 +1,6 @@
-use paste::paste;
-use petgraph_algorithms::flows::max_flow::{MaxFlowReturn, dinics, edmonds_karp};
+use petgraph_algorithms::flows::max_flow::{
+    MaxFlowReturn, dinics_mod::dinics, edmonds_karp_mod::edmonds_karp,
+};
 use petgraph_core::{
     graph::{DirectedGraph, storable::StorableGraph},
     utils::test_graphs::directed::DirectedTestGraph,
@@ -15,35 +16,36 @@ macro_rules! test_max_flow_on_graph {
         $graph_remove_node:expr,
         $graph_remove_edge:expr
     ) => {
-        test_max_flow_all_examples!(
-            $graph_constructor,
-            $graph_add_node,
-            $graph_add_edge,
-            $graph_remove_node,
-            $graph_remove_edge,
-            |graph, source, destination| edmonds_karp(graph, source, destination, |edge_id| graph
-                .edge(edge_id)
-                .unwrap()
-                .data
-                .clone())
-            .into_max_flow_and_flow_data(),
-            edmonds_karp
-        );
-
-        test_max_flow_all_examples!(
-            $graph_constructor,
-            $graph_add_node,
-            $graph_add_edge,
-            $graph_remove_node,
-            $graph_remove_edge,
-            |graph, source, destination| dinics(graph, source, destination, |edge_id| graph
-                .edge(edge_id)
-                .unwrap()
-                .data
-                .clone())
-            .into_max_flow_and_flow_data(),
-            dinics
-        );
+        mod edmonds_karp {
+            use super::*;
+            test_max_flow_all_examples!(
+                $graph_constructor,
+                $graph_add_node,
+                $graph_add_edge,
+                $graph_remove_node,
+                $graph_remove_edge,
+                |graph, source, destination| edmonds_karp(graph, source, destination, |edge_id| {
+                    graph.edge(edge_id).unwrap().data.clone()
+                })
+                .into_max_flow_and_flow_data()
+            );
+        }
+        mod dinics {
+            use super::*;
+            test_max_flow_all_examples!(
+                $graph_constructor,
+                $graph_add_node,
+                $graph_add_edge,
+                $graph_remove_node,
+                $graph_remove_edge,
+                |graph, source, destination| dinics(graph, source, destination, |edge_id| graph
+                    .edge(edge_id)
+                    .unwrap()
+                    .data
+                    .clone())
+                .into_max_flow_and_flow_data()
+            );
+        }
     };
 }
 
@@ -54,104 +56,90 @@ macro_rules! test_max_flow_all_examples {
         $graph_add_edge:expr,
         $graph_remove_node:expr,
         $graph_remove_edge:expr,
-        $max_flow_algorithm:expr,
-        $max_flow_algorithm_name:ident
+        $max_flow_algorithm:expr
     ) => {
-        paste! {
-            #[test]
-            fn [<test_$max_flow_algorithm_name _one>]() {
-                crate::flows::max_flow::test_max_flow_one_call_me(
-                    $graph_constructor,
-                    $graph_add_node,
-                    $graph_add_edge,
-                    $graph_remove_node,
-                    $graph_remove_edge,
-                    $max_flow_algorithm,
-                );
-            }
-        }
-        paste! {
-            #[test]
-            fn [<test_$max_flow_algorithm_name _two>]() {
-                crate::flows::max_flow::test_max_flow_two_call_me(
-                    $graph_constructor,
-                    $graph_add_node,
-                    $graph_add_edge,
-                    $graph_remove_node,
-                    $graph_remove_edge,
-                    $max_flow_algorithm,
-                );
-            }
+        #[test]
+        fn test_one() {
+            crate::flows::max_flow::test_max_flow_one_call_me(
+                $graph_constructor,
+                $graph_add_node,
+                $graph_add_edge,
+                $graph_remove_node,
+                $graph_remove_edge,
+                $max_flow_algorithm,
+            );
         }
 
-        paste! {
-            #[test]
-            fn [<test_$max_flow_algorithm_name _three>]() {
-                crate::flows::max_flow::test_max_flow_three_call_me(
-                    $graph_constructor,
-                    $graph_add_node,
-                    $graph_add_edge,
-                    $graph_remove_node,
-                    $graph_remove_edge,
-                    $max_flow_algorithm,
-                );
-            }
+        #[test]
+        fn test_two() {
+            crate::flows::max_flow::test_max_flow_two_call_me(
+                $graph_constructor,
+                $graph_add_node,
+                $graph_add_edge,
+                $graph_remove_node,
+                $graph_remove_edge,
+                $max_flow_algorithm,
+            );
         }
 
-        paste! {
-            #[test]
-            fn [<test_$max_flow_algorithm_name _four>]() {
-                crate::flows::max_flow::test_max_flow_four_call_me(
-                    $graph_constructor,
-                    $graph_add_node,
-                    $graph_add_edge,
-                    $graph_remove_node,
-                    $graph_remove_edge,
-                    $max_flow_algorithm,
-                );
-            }
+        #[test]
+        fn test_three() {
+            crate::flows::max_flow::test_max_flow_three_call_me(
+                $graph_constructor,
+                $graph_add_node,
+                $graph_add_edge,
+                $graph_remove_node,
+                $graph_remove_edge,
+                $max_flow_algorithm,
+            );
         }
 
-        paste! {
-            #[test]
-            fn [<test_$max_flow_algorithm_name _five>]() {
-                crate::flows::max_flow::test_max_flow_five_call_me(
-                    $graph_constructor,
-                    $graph_add_node,
-                    $graph_add_edge,
-                    $graph_remove_node,
-                    $graph_remove_edge,
-                    $max_flow_algorithm,
-                );
-            }
+        #[test]
+        fn test_four() {
+            crate::flows::max_flow::test_max_flow_four_call_me(
+                $graph_constructor,
+                $graph_add_node,
+                $graph_add_edge,
+                $graph_remove_node,
+                $graph_remove_edge,
+                $max_flow_algorithm,
+            );
         }
 
-        paste! {
-            #[test]
-            fn [<test_$max_flow_algorithm_name _six>]() {
-                crate::flows::max_flow::test_max_flow_six_call_me(
-                    $graph_constructor,
-                    $graph_add_node,
-                    $graph_add_edge,
-                    $graph_remove_node,
-                    $graph_remove_edge,
-                    $max_flow_algorithm,
-                );
-            }
+        #[test]
+        fn test_five() {
+            crate::flows::max_flow::test_max_flow_five_call_me(
+                $graph_constructor,
+                $graph_add_node,
+                $graph_add_edge,
+                $graph_remove_node,
+                $graph_remove_edge,
+                $max_flow_algorithm,
+            );
         }
 
-        paste! {
-            #[test]
-            fn [<test_$max_flow_algorithm_name _seven>]() {
-                crate::flows::max_flow::test_max_flow_seven_call_me(
-                    $graph_constructor,
-                    $graph_add_node,
-                    $graph_add_edge,
-                    $graph_remove_node,
-                    $graph_remove_edge,
-                    $max_flow_algorithm,
-                );
-            }
+        #[test]
+        fn test_six() {
+            crate::flows::max_flow::test_max_flow_six_call_me(
+                $graph_constructor,
+                $graph_add_node,
+                $graph_add_edge,
+                $graph_remove_node,
+                $graph_remove_edge,
+                $max_flow_algorithm,
+            );
+        }
+
+        #[test]
+        fn test_seven() {
+            crate::flows::max_flow::test_max_flow_seven_call_me(
+                $graph_constructor,
+                $graph_add_node,
+                $graph_add_edge,
+                $graph_remove_node,
+                $graph_remove_edge,
+                $max_flow_algorithm,
+            );
         }
 
         // TODO Add missing test functions once proper IndexId etc handling in Algorithms is done.

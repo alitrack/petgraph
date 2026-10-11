@@ -2,70 +2,42 @@ use petgraph_algorithms::flows::max_flow::{
     MaxFlowReturn, dinics_mod::dinics, edmonds_karp_mod::edmonds_karp,
 };
 use petgraph_core::{
-    graph::{DirectedGraph, storable::StorableGraph},
+    graph::{DirectedGraph, EditableGraph, storable::StorableGraph},
     utils::test_graphs::directed::DirectedTestGraph,
 };
 
 use crate::run_macro_for_all_dir_graphs;
 
 macro_rules! test_max_flow_on_graph {
-    (
-        $graph_constructor:expr,
-        $graph_add_node:expr,
-        $graph_add_edge:expr,
-        $graph_remove_node:expr,
-        $graph_remove_edge:expr
-    ) => {
+    ($graph_constructor:expr) => {
         mod edmonds_karp {
             use super::*;
-            test_max_flow_all_examples!(
-                $graph_constructor,
-                $graph_add_node,
-                $graph_add_edge,
-                $graph_remove_node,
-                $graph_remove_edge,
-                |graph, source, destination| edmonds_karp(graph, source, destination, |edge_id| {
+            test_max_flow_all_examples!($graph_constructor, |graph, source, destination| {
+                edmonds_karp(graph, source, destination, |edge_id| {
                     graph.edge(edge_id).unwrap().data.clone()
                 })
                 .into_max_flow_and_flow_data()
-            );
+            });
         }
         mod dinics {
             use super::*;
-            test_max_flow_all_examples!(
-                $graph_constructor,
-                $graph_add_node,
-                $graph_add_edge,
-                $graph_remove_node,
-                $graph_remove_edge,
-                |graph, source, destination| dinics(graph, source, destination, |edge_id| graph
-                    .edge(edge_id)
-                    .unwrap()
-                    .data
-                    .clone())
-                .into_max_flow_and_flow_data()
-            );
+            test_max_flow_all_examples!($graph_constructor, |graph, source, destination| dinics(
+                graph,
+                source,
+                destination,
+                |edge_id| graph.edge(edge_id).unwrap().data.clone()
+            )
+            .into_max_flow_and_flow_data());
         }
     };
 }
 
 macro_rules! test_max_flow_all_examples {
-    (
-        $graph_constructor:expr,
-        $graph_add_node:expr,
-        $graph_add_edge:expr,
-        $graph_remove_node:expr,
-        $graph_remove_edge:expr,
-        $max_flow_algorithm:expr
-    ) => {
+    ($graph_constructor:expr, $max_flow_algorithm:expr) => {
         #[test]
         fn test_one() {
             crate::flows::max_flow::test_max_flow_one_call_me(
                 $graph_constructor,
-                $graph_add_node,
-                $graph_add_edge,
-                $graph_remove_node,
-                $graph_remove_edge,
                 $max_flow_algorithm,
             );
         }
@@ -74,10 +46,6 @@ macro_rules! test_max_flow_all_examples {
         fn test_two() {
             crate::flows::max_flow::test_max_flow_two_call_me(
                 $graph_constructor,
-                $graph_add_node,
-                $graph_add_edge,
-                $graph_remove_node,
-                $graph_remove_edge,
                 $max_flow_algorithm,
             );
         }
@@ -86,10 +54,6 @@ macro_rules! test_max_flow_all_examples {
         fn test_three() {
             crate::flows::max_flow::test_max_flow_three_call_me(
                 $graph_constructor,
-                $graph_add_node,
-                $graph_add_edge,
-                $graph_remove_node,
-                $graph_remove_edge,
                 $max_flow_algorithm,
             );
         }
@@ -98,10 +62,6 @@ macro_rules! test_max_flow_all_examples {
         fn test_four() {
             crate::flows::max_flow::test_max_flow_four_call_me(
                 $graph_constructor,
-                $graph_add_node,
-                $graph_add_edge,
-                $graph_remove_node,
-                $graph_remove_edge,
                 $max_flow_algorithm,
             );
         }
@@ -110,10 +70,6 @@ macro_rules! test_max_flow_all_examples {
         fn test_five() {
             crate::flows::max_flow::test_max_flow_five_call_me(
                 $graph_constructor,
-                $graph_add_node,
-                $graph_add_edge,
-                $graph_remove_node,
-                $graph_remove_edge,
                 $max_flow_algorithm,
             );
         }
@@ -122,10 +78,6 @@ macro_rules! test_max_flow_all_examples {
         fn test_six() {
             crate::flows::max_flow::test_max_flow_six_call_me(
                 $graph_constructor,
-                $graph_add_node,
-                $graph_add_edge,
-                $graph_remove_node,
-                $graph_remove_edge,
                 $max_flow_algorithm,
             );
         }
@@ -134,10 +86,6 @@ macro_rules! test_max_flow_all_examples {
         fn test_seven() {
             crate::flows::max_flow::test_max_flow_seven_call_me(
                 $graph_constructor,
-                $graph_add_node,
-                $graph_add_edge,
-                $graph_remove_node,
-                $graph_remove_edge,
                 $max_flow_algorithm,
             );
         }
@@ -148,42 +96,38 @@ macro_rules! test_max_flow_all_examples {
 
 run_macro_for_all_dir_graphs!(test_max_flow_on_graph);
 
-fn test_max_flow_one_call_me<G: DirectedGraph + StorableGraph>(
+fn test_max_flow_one_call_me<
+    G: DirectedGraph + StorableGraph + EditableGraph<OwnedNodeData = (), OwnedEdgeData = u32>,
+>(
     graph_constructor: impl Fn() -> G,
-    graph_add_node: impl Fn(&mut G, ()) -> G::NodeId,
-    graph_add_edge: impl Fn(&mut G, G::NodeId, G::NodeId, u32) -> Option<G::EdgeId>,
-    _graph_remove_node: impl Fn(&mut G, G::NodeId),
-    _graph_remove_edge: impl Fn(&mut G, G::EdgeId),
     flow_algorithm: impl Fn(&G, G::NodeId, G::NodeId) -> (u32, G::EdgeDataContainer<u32>),
 ) {
     // Example from https://downey.io/blog/max-flow-ford-fulkerson-algorithm-explanation/
     let mut graph = graph_constructor();
     let nodes = [
-        graph_add_node(&mut graph, ()),
-        graph_add_node(&mut graph, ()),
-        graph_add_node(&mut graph, ()),
-        graph_add_node(&mut graph, ()),
+        graph.add_node(()).unwrap(),
+        graph.add_node(()).unwrap(),
+        graph.add_node(()).unwrap(),
+        graph.add_node(()).unwrap(),
     ];
     for (source, sink, weight) in [(0, 1, 3), (0, 2, 2), (1, 2, 5), (1, 3, 2), (2, 3, 3)] {
-        graph_add_edge(&mut graph, nodes[source], nodes[sink], weight);
+        graph.add_edge(nodes[source], nodes[sink], weight).unwrap();
     }
     let (max_flow, _) = flow_algorithm(&graph, nodes[0], nodes[3]);
     assert_eq!(5, max_flow);
 }
 
-fn test_max_flow_two_call_me<G: DirectedGraph + StorableGraph>(
+fn test_max_flow_two_call_me<
+    G: DirectedGraph + StorableGraph + EditableGraph<OwnedNodeData = (), OwnedEdgeData = u32>,
+>(
     graph_constructor: impl Fn() -> G,
-    graph_add_node: impl Fn(&mut G, ()) -> G::NodeId,
-    graph_add_edge: impl Fn(&mut G, G::NodeId, G::NodeId, u32) -> Option<G::EdgeId>,
-    _graph_remove_node: impl Fn(&mut G, G::NodeId),
-    _graph_remove_edge: impl Fn(&mut G, G::EdgeId),
     flow_algorithm: impl Fn(&G, G::NodeId, G::NodeId) -> (u32, G::EdgeDataContainer<u32>),
 ) {
     // Example from https://brilliant.org/wiki/ford-fulkerson-algorithm/
     let mut graph = graph_constructor();
     let mut nodes = Vec::new();
     for _ in 0..6 {
-        nodes.push(graph_add_node(&mut graph, ()));
+        nodes.push(graph.add_node(()).unwrap());
     }
     for (source, sink, weight) in [
         (0, 1, 4),
@@ -194,25 +138,23 @@ fn test_max_flow_two_call_me<G: DirectedGraph + StorableGraph>(
         (3, 5, 2),
         (4, 5, 6),
     ] {
-        graph_add_edge(&mut graph, nodes[source], nodes[sink], weight);
+        graph.add_edge(nodes[source], nodes[sink], weight).unwrap();
     }
     let (max_flow, _) = flow_algorithm(&graph, nodes[0], nodes[5]);
     assert_eq!(7, max_flow);
 }
 
-fn test_max_flow_three_call_me<G: DirectedGraph + StorableGraph>(
+fn test_max_flow_three_call_me<
+    G: DirectedGraph + StorableGraph + EditableGraph<OwnedNodeData = (), OwnedEdgeData = u32>,
+>(
     graph_constructor: impl Fn() -> G,
-    graph_add_node: impl Fn(&mut G, ()) -> G::NodeId,
-    graph_add_edge: impl Fn(&mut G, G::NodeId, G::NodeId, u32) -> Option<G::EdgeId>,
-    _graph_remove_node: impl Fn(&mut G, G::NodeId),
-    _graph_remove_edge: impl Fn(&mut G, G::EdgeId),
     flow_algorithm: impl Fn(&G, G::NodeId, G::NodeId) -> (u32, G::EdgeDataContainer<u32>),
 ) {
     // Example from https://cp-algorithms.com/graph/edmonds_karp.html
     let mut graph = graph_constructor();
     let mut nodes = Vec::new();
     for _ in 0..6 {
-        nodes.push(graph_add_node(&mut graph, ()));
+        nodes.push(graph.add_node(()).unwrap());
     }
     for (source, sink, weight) in [
         (0, 1, 7),
@@ -225,25 +167,23 @@ fn test_max_flow_three_call_me<G: DirectedGraph + StorableGraph>(
         (4, 3, 3),
         (4, 5, 5),
     ] {
-        graph_add_edge(&mut graph, nodes[source], nodes[sink], weight);
+        graph.add_edge(nodes[source], nodes[sink], weight).unwrap();
     }
     let (max_flow, _) = flow_algorithm(&graph, nodes[0], nodes[5]);
     assert_eq!(10, max_flow);
 }
 
-fn test_max_flow_four_call_me<G: DirectedGraph + StorableGraph>(
+fn test_max_flow_four_call_me<
+    G: DirectedGraph + StorableGraph + EditableGraph<OwnedNodeData = (), OwnedEdgeData = u32>,
+>(
     graph_constructor: impl Fn() -> G,
-    graph_add_node: impl Fn(&mut G, ()) -> G::NodeId,
-    graph_add_edge: impl Fn(&mut G, G::NodeId, G::NodeId, u32) -> Option<G::EdgeId>,
-    _graph_remove_node: impl Fn(&mut G, G::NodeId),
-    _graph_remove_edge: impl Fn(&mut G, G::EdgeId),
     flow_algorithm: impl Fn(&G, G::NodeId, G::NodeId) -> (u32, G::EdgeDataContainer<u32>),
 ) {
     // Example from https://www.programiz.com/dsa/ford-fulkerson-algorithm (corrected: result not 6 but 5)
     let mut graph = graph_constructor();
     let mut nodes = Vec::new();
     for _ in 0..6 {
-        nodes.push(graph_add_node(&mut graph, ()));
+        nodes.push(graph.add_node(()).unwrap());
     }
     for (source, sink, weight) in [
         (0, 1, 8),
@@ -254,24 +194,22 @@ fn test_max_flow_four_call_me<G: DirectedGraph + StorableGraph>(
         (3, 5, 2),
         (4, 5, 5),
     ] {
-        graph_add_edge(&mut graph, nodes[source], nodes[sink], weight);
+        graph.add_edge(nodes[source], nodes[sink], weight).unwrap();
     }
     let (max_flow, _) = flow_algorithm(&graph, nodes[0], nodes[5]);
     assert_eq!(5, max_flow);
 }
 
-fn test_max_flow_five_call_me<G: DirectedGraph + StorableGraph>(
+fn test_max_flow_five_call_me<
+    G: DirectedGraph + StorableGraph + EditableGraph<OwnedNodeData = (), OwnedEdgeData = u32>,
+>(
     graph_constructor: impl Fn() -> G,
-    graph_add_node: impl Fn(&mut G, ()) -> G::NodeId,
-    graph_add_edge: impl Fn(&mut G, G::NodeId, G::NodeId, u32) -> Option<G::EdgeId>,
-    _graph_remove_node: impl Fn(&mut G, G::NodeId),
-    _graph_remove_edge: impl Fn(&mut G, G::EdgeId),
     flow_algorithm: impl Fn(&G, G::NodeId, G::NodeId) -> (u32, G::EdgeDataContainer<u32>),
 ) {
     let mut graph = graph_constructor();
     let mut nodes = Vec::new();
     for _ in 0..6 {
-        nodes.push(graph_add_node(&mut graph, ()));
+        nodes.push(graph.add_node(()).unwrap());
     }
     for (source, sink, weight) in [
         (0, 1, 16),
@@ -285,25 +223,23 @@ fn test_max_flow_five_call_me<G: DirectedGraph + StorableGraph>(
         (4, 3, 7),
         (4, 5, 4),
     ] {
-        graph_add_edge(&mut graph, nodes[source], nodes[sink], weight);
+        graph.add_edge(nodes[source], nodes[sink], weight).unwrap();
     }
     let (max_flow, _) = flow_algorithm(&graph, nodes[0], nodes[5]);
     assert_eq!(23, max_flow);
 }
 
-fn test_max_flow_six_call_me<G: DirectedGraph + StorableGraph>(
+fn test_max_flow_six_call_me<
+    G: DirectedGraph + StorableGraph + EditableGraph<OwnedNodeData = (), OwnedEdgeData = u32>,
+>(
     graph_constructor: impl Fn() -> G,
-    graph_add_node: impl Fn(&mut G, ()) -> G::NodeId,
-    graph_add_edge: impl Fn(&mut G, G::NodeId, G::NodeId, u32) -> Option<G::EdgeId>,
-    _graph_remove_node: impl Fn(&mut G, G::NodeId),
-    _graph_remove_edge: impl Fn(&mut G, G::EdgeId),
     flow_algorithm: impl Fn(&G, G::NodeId, G::NodeId) -> (u32, G::EdgeDataContainer<u32>),
 ) {
     // Example taken from https://medium.com/@jithmisha/solving-the-maximum-flow-problem-with-ford-fulkerson-method-3fccc2883dc7
     let mut graph = graph_constructor();
     let mut nodes = Vec::new();
     for _ in 0..6 {
-        nodes.push(graph_add_node(&mut graph, ()));
+        nodes.push(graph.add_node(()).unwrap());
     }
     for (source, sink, weight) in [
         (0, 1, 10),
@@ -316,18 +252,16 @@ fn test_max_flow_six_call_me<G: DirectedGraph + StorableGraph>(
         (4, 3, 6),
         (4, 5, 10),
     ] {
-        graph_add_edge(&mut graph, nodes[source], nodes[sink], weight);
+        graph.add_edge(nodes[source], nodes[sink], weight).unwrap();
     }
     let (max_flow, _) = flow_algorithm(&graph, nodes[0], nodes[5]);
     assert_eq!(19, max_flow);
 }
 
-fn test_max_flow_seven_call_me<G: DirectedGraph + StorableGraph>(
+fn test_max_flow_seven_call_me<
+    G: DirectedGraph + StorableGraph + EditableGraph<OwnedNodeData = (), OwnedEdgeData = u32>,
+>(
     graph_constructor: impl Fn() -> G,
-    graph_add_node: impl Fn(&mut G, ()) -> G::NodeId,
-    graph_add_edge: impl Fn(&mut G, G::NodeId, G::NodeId, u32) -> Option<G::EdgeId>,
-    _graph_remove_node: impl Fn(&mut G, G::NodeId),
-    _graph_remove_edge: impl Fn(&mut G, G::EdgeId),
     flow_algorithm: impl Fn(&G, G::NodeId, G::NodeId) -> (u32, G::EdgeDataContainer<u32>),
 ) {
     // Example that can lead to invalid answers if backward edges
@@ -335,20 +269,20 @@ fn test_max_flow_seven_call_me<G: DirectedGraph + StorableGraph>(
     // instead of the maximum 4
     let mut graph = graph_constructor();
 
-    let node_s = graph_add_node(&mut graph, ());
-    let node_a = graph_add_node(&mut graph, ());
-    let node_b = graph_add_node(&mut graph, ());
-    let node_c = graph_add_node(&mut graph, ());
-    let node_d = graph_add_node(&mut graph, ());
-    let node_t = graph_add_node(&mut graph, ());
+    let node_s = graph.add_node(()).unwrap();
+    let node_a = graph.add_node(()).unwrap();
+    let node_b = graph.add_node(()).unwrap();
+    let node_c = graph.add_node(()).unwrap();
+    let node_d = graph.add_node(()).unwrap();
+    let node_t = graph.add_node(()).unwrap();
 
-    graph_add_edge(&mut graph, node_s, node_a, 2);
-    graph_add_edge(&mut graph, node_s, node_b, 2);
-    graph_add_edge(&mut graph, node_a, node_c, 1); // misleading edge
-    graph_add_edge(&mut graph, node_a, node_d, 2);
-    graph_add_edge(&mut graph, node_b, node_c, 2);
-    graph_add_edge(&mut graph, node_c, node_t, 2);
-    graph_add_edge(&mut graph, node_d, node_t, 2);
+    graph.add_edge(node_s, node_a, 2).unwrap();
+    graph.add_edge(node_s, node_b, 2).unwrap();
+    graph.add_edge(node_a, node_c, 1).unwrap(); // misleading edge
+    graph.add_edge(node_a, node_d, 2).unwrap();
+    graph.add_edge(node_b, node_c, 2).unwrap();
+    graph.add_edge(node_c, node_t, 2).unwrap();
+    graph.add_edge(node_d, node_t, 2).unwrap();
 
     let (flow, _) = flow_algorithm(&graph, node_s, node_t);
 

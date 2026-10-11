@@ -308,9 +308,9 @@ fn find_blocking_flow<G, C>(
     network: &G,
     source: G::NodeId,
     destination: G::NodeId,
-    flows: &mut impl DataContainer<G::EdgeId, C>,
-    level_edges: &mut impl DataContainer<G::NodeId, Vec<FlowEdge<G, C>>>,
-    visited: &mut impl VisitContainer<G::NodeId>,
+    flows: &mut G::EdgeDataContainer<C>,
+    level_edges: &mut G::NodeDataContainer<Vec<FlowEdge<G, C>>>,
+    visited: &mut G::NodeVisitContainer,
 ) -> C
 where
     G: DirectedGraph + StorableGraph,
@@ -359,9 +359,9 @@ fn find_augmenting_path<G, C>(
     source: G::NodeId,
     destination: G::NodeId,
     flows: &impl DataContainer<G::EdgeId, C>,
-    level_edges: &mut impl DataContainer<G::NodeId, Vec<FlowEdge<G, C>>>,
-    visited: &mut impl VisitContainer<G::NodeId>,
-    edge_to: &mut impl DataContainer<G::NodeId, Option<FlowEdge<G, C>>>,
+    level_edges: &mut G::NodeDataContainer<Vec<FlowEdge<G, C>>>,
+    visited: &mut G::NodeVisitContainer,
+    edge_to: &mut G::NodeDataContainer<Option<FlowEdge<G, C>>>,
 ) -> bool
 where
     G: DirectedGraph + StorableGraph,

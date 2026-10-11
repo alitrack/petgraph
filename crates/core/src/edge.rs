@@ -35,21 +35,6 @@ where
             data: self.data.borrow().clone(),
         }
     }
-
-    pub fn to_edge_no_data(&self) -> EdgeNoData<I, N> {
-        EdgeNoData {
-            id: self.id,
-            source: self.source,
-            target: self.target,
-        }
-    }
-}
-
-pub struct EdgeNoData<I, N> {
-    pub id: I,
-
-    pub source: N,
-    pub target: N,
 }
 
 pub type EdgeRef<'graph, G> =
